@@ -1,20 +1,15 @@
-// Minimal Swagger UI assets embedded in binary
-pub const SWAGGER_CSS: &[u8] = b"
-.swagger-ui { font-family: sans-serif; }
-.swagger-ui .topbar { display: none; }
-";
+// Embedded assets removed: static files are served from the `static/` directory inside the
+// runtime image. These helper functions remain to keep the module API present for code
+// that references `embedded_assets::swagger_css()` and `embedded_assets::swagger_js()`.
 
-pub const SWAGGER_JS: &[u8] = b"
-// Minimal Swagger UI implementation
-window.SwaggerUIBundle = {
-    presets: {
-        apis: [],
-        standalone: []
-    }
-};
-
-// Simple fallback if CDN fails
-if (!window.SwaggerUIBundle) {
-    document.body.innerHTML = '<h1>Swagger UI</h1><p>Loading from CDN...</p><script src=\"https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js\"></script>';
+/// Return embedded swagger CSS bytes if present. Currently returns `None` to indicate
+/// no embedded fallback is available.
+pub fn swagger_css() -> Option<&'static [u8]> {
+    None
 }
-";
+
+/// Return embedded swagger JS bytes if present. Currently returns `None` to indicate
+/// no embedded fallback is available.
+pub fn swagger_js() -> Option<&'static [u8]> {
+    None
+}

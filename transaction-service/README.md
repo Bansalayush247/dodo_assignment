@@ -13,7 +13,7 @@ Run locally
 docker compose up -d db
 ```
 
-2. Apply migrations:
+1. Apply migrations:
 
 ```bash
 PGPASSWORD=postgres psql -h localhost -U postgres -d transaction_service -f migrations/20250915204803_create_accounts.sql
@@ -41,6 +41,10 @@ cargo build --release
 ```bash
 docker compose up --build
 ```
+
+Quick access to the API documentation (when the app is running):
+
+- Open the interactive docs at: `http://localhost:3000/docs`
 
 Troubleshooting: port conflicts
 -------------------------------

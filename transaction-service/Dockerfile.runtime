@@ -3,9 +3,34 @@ RUN apt-get update && apt-get install -y ca-certificates libpq5 postgresql-clien
 WORKDIR /app
 
 # Copy the locally-built release binary into the image
-COPY target/release/transaction-service /app/transaction-service
-COPY migrations /app/migrations
-COPY entrypoint.sh /app/entrypoint.sh
+
+FROM --platform=$BUILDPLATFORM rust:1.72-bookworm as builder
+WORKDIR /app
+
+# Cache and build dependencies
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+COPY migrations ./migrations
+COPY openapi.yaml ./openapi.yaml
+COPY static ./static
+COPY entrypoint.sh ./entrypoint.sh
+
+RUN rustup default stable || true
+RUN apt-get update && apt-get install -y pkg-config libssl-dev libpq-dev build-essential ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Build release
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates libpq5 postgresql-client && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+# Copy runtime artifacts from builder
+COPY --from=builder /app/target/release/transaction-service /app/transaction-service
+COPY --from=builder /app/migrations /app/migrations
+COPY --from=builder /app/openapi.yaml /app/openapi.yaml
+COPY --from=builder /app/static /app/static
+COPY --from=builder /app/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 ENV RUST_LOG=info

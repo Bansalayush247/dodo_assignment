@@ -1,5 +1,5 @@
-// src/main.rs - clean implementation
 use axum::{Router, routing::get, response::Html, response::IntoResponse};
+// Serve static files from the `static/` directory if present; fall back to embedded bytes
 use axum::http::header::CONTENT_TYPE;
 use axum::http::StatusCode;
 use tokio::fs;
@@ -67,20 +67,40 @@ async fn serve_swagger() -> impl IntoResponse {
 <html>
 <head>
     <title>API Documentation</title>
-    <link rel="stylesheet" type="text/css" href="/swagger-ui.css" />
+    <link rel="stylesheet" type="text/css" href="/static/swagger-ui.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>body { margin:0; padding:0; }</style>
 </head>
 <body>
     <div id="swagger-ui"></div>
-    <script src="/swagger-ui-bundle.js"></script>
+    <script src="/static/swagger-ui-bundle.js"></script>
     <script>
-        SwaggerUIBundle({
-            url: '/openapi.yaml',
-            dom_id: '#swagger-ui',
-            presets: [
-                SwaggerUIBundle.presets.apis,
-                SwaggerUIBundle.presets.standalone
-            ]
-        });
+        // Initialize Swagger UI
+        if (typeof SwaggerUIBundle === 'undefined') {
+            // fallback: try loading CDN bundle
+            var s = document.createElement('script');
+            s.src = 'https://unpkg.com/swagger-ui-dist@4/swagger-ui-bundle.js';
+            s.onload = function() { initSwagger(); };
+            document.head.appendChild(s);
+        } else {
+            initSwagger();
+        }
+
+        function initSwagger() {
+            try {
+                SwaggerUIBundle({
+                    url: '/openapi.yaml',
+                    dom_id: '#swagger-ui',
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIBundle.presets.standalone
+                    ]
+                });
+            } catch (e) {
+                document.getElementById('swagger-ui').innerText = 'Failed to initialize Swagger UI: ' + e;
+            }
+        }
     </script>
 </body>
 </html>
@@ -89,19 +109,55 @@ async fn serve_swagger() -> impl IntoResponse {
 }
 
 async fn serve_swagger_css() -> impl IntoResponse {
-    let bytes: &'static [u8] = embedded_assets::SWAGGER_CSS;
-    (
-        StatusCode::OK,
-        [(CONTENT_TYPE, "text/css")],
-        bytes.to_vec(),
-    )
+    // Prefer files from ./static/ if present (copied into the runtime image); otherwise use embedded bytes
+    match fs::read("./static/swagger-ui.css").await {
+        Ok(bytes) => (
+            StatusCode::OK,
+            [(CONTENT_TYPE, "text/css")],
+            bytes,
+        ),
+        Err(_) => {
+            if let Some(bytes) = embedded_assets::swagger_css() {
+                (
+                    StatusCode::OK,
+                    [(CONTENT_TYPE, "text/css")],
+                    bytes.to_vec(),
+                )
+            } else {
+                tracing::warn!("No embedded swagger CSS available and ./static/swagger-ui.css not found");
+                (
+                    StatusCode::NOT_FOUND,
+                    [(CONTENT_TYPE, "text/plain")],
+                    "swagger css not found".to_string().into_bytes(),
+                )
+            }
+        }
+    }
 }
 
 async fn serve_swagger_bundle_js() -> impl IntoResponse {
-    let bytes: &'static [u8] = embedded_assets::SWAGGER_JS;
-    (
-        StatusCode::OK,
-        [(CONTENT_TYPE, "application/javascript")],
-        bytes.to_vec(),
-    )
+    // Prefer files from ./static/ if present (copied into the runtime image); otherwise use embedded bytes
+    match fs::read("./static/swagger-ui-bundle.js").await {
+        Ok(bytes) => (
+            StatusCode::OK,
+            [(CONTENT_TYPE, "application/javascript")],
+            bytes,
+        ),
+        Err(_) => {
+            if let Some(bytes) = embedded_assets::swagger_js() {
+                (
+                    StatusCode::OK,
+                    [(CONTENT_TYPE, "application/javascript")],
+                    bytes.to_vec(),
+                )
+            } else {
+                tracing::warn!("No embedded swagger JS available and ./static/swagger-ui-bundle.js not found");
+                (
+                    StatusCode::NOT_FOUND,
+                    [(CONTENT_TYPE, "text/plain")],
+                    "swagger js not found".to_string().into_bytes(),
+                )
+            }
+        }
+    }
 }
