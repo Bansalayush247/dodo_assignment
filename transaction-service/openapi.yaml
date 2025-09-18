@@ -1,0 +1,491 @@
+openapi: 3.0.3
+info:
+  title: Transaction Service
+  version: "1.0.0"
+  description: Simple transaction service API (accounts, transactions, api-keys, webhooks)
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /api/accounts:
+    post:
+      summary: Create account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_name]
+              properties:
+                business_name:
+                  type: string
+                initial_balance:
+                  type: string
+                  description: Decimal as string (e.g. "100.00")
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      summary: List accounts (protected)
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/accounts/{id}:
+    get:
+      summary: Get account
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/accounts/{id}/balance:
+    get:
+      summary: Get account balance
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountBalance'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/transactions:
+    post:
+      summary: Create transaction
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [txn_type, amount]
+              properties:
+                from_account_id:
+                  type: string
+                  format: uuid
+                to_account_id:
+                  type: string
+                  format: uuid
+                amount:
+                  type: string
+                txn_type:
+                  type: string
+                  enum: [credit, debit, transfer]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      summary: List transactions
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/transactions/{id}:
+    get:
+      summary: Get transaction
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/api-keys:
+    post:
+      summary: Create API key (protected)
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_id]
+              properties:
+                account_id:
+                  type: string
+                  format: uuid
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyCreationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/webhooks:
+    post:
+      summary: Register webhook
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_id, url]
+              properties:
+                account_id:
+                  type: string
+                  format: uuid
+                url:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Webhook'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+
+  schemas:
+    Account:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        business_name:
+          type: string
+        balance:
+          type: string
+          description: Decimal balance returned as string to avoid floating point issues
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, business_name, balance, created_at]
+
+    AccountBalance:
+      type: object
+      properties:
+        account_id:
+          type: string
+          format: uuid
+        balance:
+          type: string
+      required: [account_id, balance]
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        from_account:
+          type: string
+          format: uuid
+          nullable: true
+        to_account:
+          type: string
+          format: uuid
+          nullable: true
+        amount:
+          type: string
+        txn_type:
+          type: string
+          enum: [credit, debit, transfer]
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required: [id, amount, txn_type, status, created_at]
+
+    ApiKeyCreationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        key:
+          type: string
+          description: One-time plaintext API key (shown only on creation)
+        created_at:
+          type: string
+          format: date-time
+        last_used:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, account_id, key, created_at]
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        url:
+          type: string
+        secret:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required: [id, account_id, url, secret, created_at]
+
+    WebhookEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        webhook_id:
+          type: string
+          format: uuid
+        txn_id:
+          type: string
+          format: uuid
+        delivered:
+          type: boolean
+        retry_count:
+          type: integer
+        last_attempt:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+      required: [id, webhook_id, txn_id, delivered, retry_count, created_at]
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
+
+  examples:
+    CreateAccount:
+      summary: Create account example
+      value:
+        business_name: "Acme Co"
+        initial_balance: "100.00"
+
+    CreateTransaction:
+      summary: Create transaction (transfer) example
+      value:
+        txn_type: transfer
+        from_account_id: "00000000-0000-0000-0000-000000000001"
+        to_account_id: "00000000-0000-0000-0000-000000000002"
+        amount: "10.00"
+
+    CreateApiKey:
+      summary: Create API key example
+      value:
+        account_id: "00000000-0000-0000-0000-000000000001"
+        description: "CI key"
+
+    CreateWebhook:
+      summary: Create webhook example
+      value:
+        account_id: "00000000-0000-0000-0000-000000000001"
+        url: "https://example.com/webhook"
+
+  responses:
+    BadRequest:
+      description: Bad request — validation failed or business rule
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            missing_field:
+              value:
+                code: "invalid_input"
+                message: "'business_name' is required"
+    Unauthorized:
+      description: Unauthorized — API key missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_key:
+              value:
+                code: "unauthorized"
+                message: "missing or invalid x-api-key"
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            not_found:
+              value:
+                code: "not_found"
+                message: "Resource not found"
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rate_limited:
+              value:
+                code: "rate_limited"
+                message: "Too many requests"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            server_error:
+              value:
+                code: "internal_error"
+                message: "An unexpected error occurred"
+

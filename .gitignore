@@ -1,0 +1,22 @@
+# Rust/Cargo
+/target/
+**/target/
+**/Cargo.lock
+
+# Editor files
+.vscode/
+.idea/
+.DS_Store
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+
+# Node
+node_modules/
+
+# Others
+*.sqlite

@@ -1,0 +1,21 @@
+# Rust/Cargo
+/target/
+**/target/
+**/*.rs.bk
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+*.swp
+
+# Docker
+**/docker-compose.override.yml
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# local env files
+.env
